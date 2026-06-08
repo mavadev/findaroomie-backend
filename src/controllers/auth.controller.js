@@ -4,6 +4,7 @@ import VerificationCode from '../models/VerificationCode.js';
 import { validatePassword } from '../utils/validatePassword.js';
 import { generateVerificationCode } from '../utils/generateVerificationCode.js';
 import { generateToken } from '../utils/generateToken.js';
+import { sendEmail } from '../utils/sendEmail.js';
 
 export const registerUser = async (req, res) => {
 	try {
@@ -49,6 +50,17 @@ export const registerUser = async (req, res) => {
 			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 		});
 
+		await sendEmail({
+			to: user.email,
+			subject: 'Verifica tu cuenta en FindARoomie',
+			html: `
+				<h2>Bienvenido a "Find a Roomie"</h2>
+				<p>Tu código de verificación es:</p>
+				<h1>${code}</h1>
+				<p>Este código expira en 15 minutos.</p>
+			`,
+		});
+
 		res.status(201).json({
 			message: 'Usuario registrado correctamente. Revisa tu correo para confirmar tu cuenta.',
 			user: {
@@ -59,7 +71,6 @@ export const registerUser = async (req, res) => {
 				isEmailVerified: user.isEmailVerified,
 				identityVerificationStatus: user.identityVerificationStatus,
 			},
-			devVerificationCode: code,
 		});
 	} catch (error) {
 		res.status(500).json({
@@ -231,9 +242,19 @@ export const resendVerificationCode = async (req, res) => {
 			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 		});
 
+		await sendEmail({
+			to: user.email,
+			subject: 'Nuevo código de verificación - Find A Roomie',
+			html: `
+				<h2>Verificación de correo</h2>
+				<p>Tu nuevo código es:</p>
+				<h1>${code}</h1>
+				<p>Este código expira en 15 minutos.</p>
+			`,
+		});
+
 		res.json({
 			message: 'Código de verificación reenviado correctamente',
-			devVerificationCode: code,
 		});
 	} catch (error) {
 		res.status(500).json({
@@ -275,9 +296,19 @@ export const forgotPassword = async (req, res) => {
 			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 		});
 
+		await sendEmail({
+			to: user.email,
+			subject: 'Recuperación de contraseña - Find A Roomie',
+			html: `
+				<h2>Recuperación de contraseña</h2>
+				<p>Tu código para restablecer tu contraseña es:</p>
+				<h1>${code}</h1>
+				<p>Este código expira en 15 minutos.</p>
+			`,
+		});
+
 		res.json({
 			message: 'Código de recuperación generado correctamente',
-			devResetCode: code,
 		});
 	} catch (error) {
 		res.status(500).json({
