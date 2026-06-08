@@ -192,3 +192,53 @@ export const loginUser = async (req, res) => {
 		});
 	}
 };
+
+export const resendVerificationCode = async (req, res) => {
+	try {
+		const { email } = req.body;
+
+		if (!email) {
+			return res.status(400).json({
+				message: 'El correo es obligatorio',
+			});
+		}
+
+		const user = await User.findOne({ email });
+
+		if (!user) {
+			return res.status(404).json({
+				message: 'Usuario no encontrado',
+			});
+		}
+
+		if (user.isEmailVerified) {
+			return res.status(400).json({
+				message: 'El correo ya fue verificado',
+			});
+		}
+
+		await VerificationCode.deleteMany({
+			userId: user._id,
+			type: 'email_verification',
+		});
+
+		const code = generateVerificationCode();
+
+		await VerificationCode.create({
+			userId: user._id,
+			code,
+			type: 'email_verification',
+			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+		});
+
+		res.json({
+			message: 'Código de verificación reenviado correctamente',
+			devVerificationCode: code,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al reenviar código de verificación',
+			error: error.message,
+		});
+	}
+};
