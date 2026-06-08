@@ -4,6 +4,7 @@ import VerificationCode from '../models/VerificationCode.js';
 import { validatePassword } from '../utils/validatePassword.js';
 import { generateVerificationCode } from '../utils/generateVerificationCode.js';
 import { generateToken } from '../utils/generateToken.js';
+import { sendEmail } from '../utils/sendEmail.js';
 
 export const registerUser = async (req, res) => {
 	try {
@@ -49,6 +50,17 @@ export const registerUser = async (req, res) => {
 			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
 		});
 
+		await sendEmail({
+			to: user.email,
+			subject: 'Verifica tu cuenta en FindARoomie',
+			html: `
+				<h2>Bienvenido a "Find a Roomie"</h2>
+				<p>Tu código de verificación es:</p>
+				<h1>${code}</h1>
+				<p>Este código expira en 15 minutos.</p>
+			`,
+		});
+
 		res.status(201).json({
 			message: 'Usuario registrado correctamente. Revisa tu correo para confirmar tu cuenta.',
 			user: {
@@ -59,7 +71,6 @@ export const registerUser = async (req, res) => {
 				isEmailVerified: user.isEmailVerified,
 				identityVerificationStatus: user.identityVerificationStatus,
 			},
-			devVerificationCode: code,
 		});
 	} catch (error) {
 		res.status(500).json({
@@ -188,6 +199,185 @@ export const loginUser = async (req, res) => {
 	} catch (error) {
 		res.status(500).json({
 			message: 'Error al iniciar sesión',
+			error: error.message,
+		});
+	}
+};
+
+export const resendVerificationCode = async (req, res) => {
+	try {
+		const { email } = req.body;
+
+		if (!email) {
+			return res.status(400).json({
+				message: 'El correo es obligatorio',
+			});
+		}
+
+		const user = await User.findOne({ email });
+
+		if (!user) {
+			return res.status(404).json({
+				message: 'Usuario no encontrado',
+			});
+		}
+
+		if (user.isEmailVerified) {
+			return res.status(400).json({
+				message: 'El correo ya fue verificado',
+			});
+		}
+
+		await VerificationCode.deleteMany({
+			userId: user._id,
+			type: 'email_verification',
+		});
+
+		const code = generateVerificationCode();
+
+		await VerificationCode.create({
+			userId: user._id,
+			code,
+			type: 'email_verification',
+			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+		});
+
+		await sendEmail({
+			to: user.email,
+			subject: 'Nuevo código de verificación - Find A Roomie',
+			html: `
+				<h2>Verificación de correo</h2>
+				<p>Tu nuevo código es:</p>
+				<h1>${code}</h1>
+				<p>Este código expira en 15 minutos.</p>
+			`,
+		});
+
+		res.json({
+			message: 'Código de verificación reenviado correctamente',
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al reenviar código de verificación',
+			error: error.message,
+		});
+	}
+};
+
+export const forgotPassword = async (req, res) => {
+	try {
+		const { email } = req.body;
+
+		if (!email) {
+			return res.status(400).json({
+				message: 'El correo es obligatorio',
+			});
+		}
+
+		const user = await User.findOne({ email });
+
+		if (!user) {
+			return res.status(404).json({
+				message: 'No existe una cuenta con ese correo',
+			});
+		}
+
+		await VerificationCode.deleteMany({
+			userId: user._id,
+			type: 'password_reset',
+		});
+
+		const code = generateVerificationCode();
+
+		await VerificationCode.create({
+			userId: user._id,
+			code,
+			type: 'password_reset',
+			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+		});
+
+		await sendEmail({
+			to: user.email,
+			subject: 'Recuperación de contraseña - Find A Roomie',
+			html: `
+				<h2>Recuperación de contraseña</h2>
+				<p>Tu código para restablecer tu contraseña es:</p>
+				<h1>${code}</h1>
+				<p>Este código expira en 15 minutos.</p>
+			`,
+		});
+
+		res.json({
+			message: 'Código de recuperación generado correctamente',
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al generar código de recuperación',
+			error: error.message,
+		});
+	}
+};
+
+export const resetPassword = async (req, res) => {
+	try {
+		const { email, code, newPassword } = req.body;
+
+		if (!email || !code || !newPassword) {
+			return res.status(400).json({
+				message: 'Correo, código y nueva contraseña son obligatorios',
+			});
+		}
+
+		const passwordError = validatePassword(newPassword);
+
+		if (passwordError) {
+			return res.status(400).json({
+				message: passwordError,
+			});
+		}
+
+		const user = await User.findOne({ email }).select('+password');
+
+		if (!user) {
+			return res.status(404).json({
+				message: 'Usuario no encontrado',
+			});
+		}
+
+		const verificationCode = await VerificationCode.findOne({
+			userId: user._id,
+			code,
+			type: 'password_reset',
+		});
+
+		if (!verificationCode) {
+			return res.status(400).json({
+				message: 'Código inválido o expirado',
+			});
+		}
+
+		const isSamePassword = await bcrypt.compare(newPassword, user.password);
+
+		if (isSamePassword) {
+			return res.status(400).json({
+				message: 'La nueva contraseña no puede ser igual a la anterior',
+			});
+		}
+
+		user.password = await bcrypt.hash(newPassword, 10);
+		await user.save();
+
+		await VerificationCode.deleteMany({
+			userId: user._id,
+			type: 'password_reset',
+		});
+
+		res.json({
+			message: 'Contraseña actualizada correctamente',
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al restablecer contraseña',
 			error: error.message,
 		});
 	}
