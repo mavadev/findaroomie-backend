@@ -60,3 +60,32 @@ export const updateMe = async (req, res) => {
 		});
 	}
 };
+
+export const updatePreferences = async (req, res) => {
+	try {
+		const { lookingFor, notComfortableWith } = req.body;
+
+		if (!Array.isArray(lookingFor) || !Array.isArray(notComfortableWith)) {
+			return res.status(400).json({
+				message: 'Las preferencias deben enviarse como listas de texto',
+			});
+		}
+
+		req.user.preferences = {
+			lookingFor,
+			notComfortableWith,
+		};
+
+		await req.user.save();
+
+		res.json({
+			message: 'Preferencias actualizadas correctamente',
+			preferences: req.user.preferences,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al actualizar preferencias',
+			error: error.message,
+		});
+	}
+};

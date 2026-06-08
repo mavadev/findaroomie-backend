@@ -1,15 +1,5 @@
 import mongoose from 'mongoose';
 
-const preferenceSchema = new mongoose.Schema(
-	{
-		label: {
-			type: String,
-			trim: true,
-		},
-	},
-	{ _id: false },
-);
-
 const userSchema = new mongoose.Schema(
 	{
 		firstName: {
@@ -68,23 +58,20 @@ const userSchema = new mongoose.Schema(
 			type: String,
 			default: '',
 		},
-
 		preferences: {
 			lookingFor: {
-				type: [preferenceSchema],
+				type: [String],
 				default: [],
 			},
 			notComfortableWith: {
-				type: [preferenceSchema],
+				type: [String],
 				default: [],
 			},
 		},
-
 		isEmailVerified: {
 			type: Boolean,
 			default: false,
 		},
-
 		identityVerificationStatus: {
 			type: String,
 			enum: ['pending', 'verified', 'rejected'],
