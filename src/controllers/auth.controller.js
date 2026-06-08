@@ -67,3 +67,66 @@ export const registerUser = async (req, res) => {
 		});
 	}
 };
+
+export const verifyEmail = async (req, res) => {
+	try {
+		const { email, code } = req.body;
+
+		if (!email || !code) {
+			return res.status(400).json({
+				message: 'El correo y el código son obligatorios',
+			});
+		}
+
+		const user = await User.findOne({ email });
+
+		if (!user) {
+			return res.status(404).json({
+				message: 'Usuario no encontrado',
+			});
+		}
+
+		if (user.isEmailVerified) {
+			return res.status(400).json({
+				message: 'El correo ya fue verificado',
+			});
+		}
+
+		const verificationCode = await VerificationCode.findOne({
+			userId: user._id,
+			code,
+			type: 'email_verification',
+		});
+
+		if (!verificationCode) {
+			return res.status(400).json({
+				message: 'Código inválido o expirado',
+			});
+		}
+
+		user.isEmailVerified = true;
+		await user.save();
+
+		await VerificationCode.deleteMany({
+			userId: user._id,
+			type: 'email_verification',
+		});
+
+		res.json({
+			message: 'Correo verificado correctamente',
+			user: {
+				id: user._id,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				isEmailVerified: user.isEmailVerified,
+				identityVerificationStatus: user.identityVerificationStatus,
+			},
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al verificar correo',
+			error: error.message,
+		});
+	}
+};
