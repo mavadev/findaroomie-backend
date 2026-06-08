@@ -55,8 +55,14 @@ const userSchema = new mongoose.Schema(
 			default: '',
 		},
 		profileImage: {
-			type: String,
-			default: '',
+			url: {
+				type: String,
+				default: '',
+			},
+			publicId: {
+				type: String,
+				default: '',
+			},
 		},
 		preferences: {
 			lookingFor: {
