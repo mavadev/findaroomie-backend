@@ -1,46 +1,69 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import VerificationCode from '../models/VerificationCode.js';
+import { validatePassword } from '../utils/validatePassword.js';
+import { generateVerificationCode } from '../utils/generateVerificationCode.js';
 
-export const registerUser = async(req, res) => {
-  try {
-    const { nombres, apellidos, email, password } = req.body;
+export const registerUser = async (req, res) => {
+	try {
+		const { firstName, lastName, email, password } = req.body;
 
-    if (!nombres || !apellidos || !email || !password) {
-      return res.status(400).json({
-        message: 'Todos los campos obligatorios deben completarse',
-      });
-    }
+		if (!firstName || !lastName || !email || !password) {
+			return res.status(400).json({
+				message: 'Todos los campos obligatorios deben completarse',
+			});
+		}
 
-    const userExists = await User.findOne({ email });
+		const passwordError = validatePassword(password);
 
-    if (userExists) {
-      return res.status(409).json({
-        message: 'El correo ya está registrado',
-      });
-    }
+		if (passwordError) {
+			return res.status(400).json({
+				message: passwordError,
+			});
+		}
 
-    const passwordHash = await bcrypt.hash(password, 10);
+		const userExists = await User.findOne({ email });
 
-    const newUser = await User.create({
-      nombres,
-      apellidos,
-      email,
-      password: passwordHash,
-    });
+		if (userExists) {
+			return res.status(409).json({
+				message: 'El correo ya está registrado',
+			});
+		}
 
-    res.status(201).json({
-      message: 'Usuario registrado correctamente',
-      user: {
-        id: newUser._id,
-        nombres: newUser.nombres,
-        apellidos: newUser.apellidos,
-        email: newUser.email,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Error al registrar usuario',
-      error: error.message,
-    });
-  }
+		const hashedPassword = await bcrypt.hash(password, 10);
+
+		const user = await User.create({
+			firstName,
+			lastName,
+			email,
+			password: hashedPassword,
+		});
+
+		const code = generateVerificationCode();
+
+		await VerificationCode.create({
+			userId: user._id,
+			code,
+			type: 'email_verification',
+			expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+		});
+
+		res.status(201).json({
+			message: 'Usuario registrado correctamente. Revisa tu correo para confirmar tu cuenta.',
+			user: {
+				id: user._id,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				isEmailVerified: user.isEmailVerified,
+				identityVerificationStatus: user.identityVerificationStatus,
+			},
+			devVerificationCode: code,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al registrar usuario',
+			error: error.message,
+		});
+	}
 };
