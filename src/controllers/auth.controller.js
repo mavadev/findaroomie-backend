@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import VerificationCode from '../models/VerificationCode.js';
 import { validatePassword } from '../utils/validatePassword.js';
 import { generateVerificationCode } from '../utils/generateVerificationCode.js';
+import { generateToken } from '../utils/generateToken.js';
 
 export const registerUser = async (req, res) => {
 	try {
@@ -126,6 +127,67 @@ export const verifyEmail = async (req, res) => {
 	} catch (error) {
 		res.status(500).json({
 			message: 'Error al verificar correo',
+			error: error.message,
+		});
+	}
+};
+
+export const loginUser = async (req, res) => {
+	try {
+		const { email, password } = req.body;
+
+		if (!email || !password) {
+			return res.status(400).json({
+				message: 'El correo y la contraseña son obligatorios',
+			});
+		}
+
+		const user = await User.findOne({ email }).select('+password');
+
+		if (!user) {
+			return res.status(401).json({
+				message: 'Credenciales inválidas',
+			});
+		}
+
+		const isPasswordValid = await bcrypt.compare(password, user.password);
+
+		if (!isPasswordValid) {
+			return res.status(401).json({
+				message: 'Credenciales inválidas',
+			});
+		}
+
+		if (!user.isActive) {
+			return res.status(403).json({
+				message: 'La cuenta se encuentra desactivada',
+			});
+		}
+
+		if (!user.isEmailVerified) {
+			return res.status(403).json({
+				message: 'Debes verificar tu correo antes de iniciar sesión',
+			});
+		}
+
+		const token = generateToken(user._id);
+
+		res.json({
+			message: 'Inicio de sesión correcto',
+			token,
+			user: {
+				id: user._id,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				profileImage: user.profileImage,
+				isEmailVerified: user.isEmailVerified,
+				identityVerificationStatus: user.identityVerificationStatus,
+			},
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al iniciar sesión',
 			error: error.message,
 		});
 	}
