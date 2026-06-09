@@ -111,3 +111,49 @@ export const uploadRoomImages = async (req, res) => {
 		});
 	}
 };
+
+export const getRooms = async (req, res) => {
+	try {
+		const rooms = await Room.find({ isAvailable: true })
+			.populate('ownerId', 'firstName lastName profileImage identityVerificationStatus')
+			.sort({ createdAt: -1 });
+
+		res.json({
+			message: 'Habitaciones obtenidas correctamente',
+			total: rooms.length,
+			rooms,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al obtener habitaciones',
+			error: error.message,
+		});
+	}
+};
+
+export const getRoomById = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		const room = await Room.findById(id).populate(
+			'ownerId',
+			'firstName lastName email phone profileImage identityVerificationStatus',
+		);
+
+		if (!room) {
+			return res.status(404).json({
+				message: 'Habitación no encontrada',
+			});
+		}
+
+		res.json({
+			message: 'Habitación obtenida correctamente',
+			room,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al obtener habitación',
+			error: error.message,
+		});
+	}
+};
