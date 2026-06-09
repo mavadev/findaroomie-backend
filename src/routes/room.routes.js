@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { protect } from '../middlewares/auth.middleware.js';
 import { uploadImage } from '../middlewares/upload.middleware.js';
-import { createRoom, uploadRoomImages, getRooms, getRoomById } from '../controllers/room.controller.js';
+import { createRoom, uploadRoomImages, getRooms, getRoomById, updateRoom } from '../controllers/room.controller.js';
 
 const router = Router();
 
@@ -10,5 +10,6 @@ router.post('/:id/images', protect, uploadImage.array('images', 6), uploadRoomIm
 
 router.get('/', getRooms);
 router.get('/:id', getRoomById);
+router.put('/:id', protect, updateRoom);
 
 export default router;

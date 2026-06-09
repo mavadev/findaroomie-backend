@@ -66,7 +66,7 @@ export const createRoom = async (req, res) => {
 			houseRules,
 			livingPreferences,
 		});
-		
+
 		res.status(201).json({
 			message: 'Habitación publicada correctamente',
 			room,
@@ -141,9 +141,9 @@ export const getRooms = async (req, res) => {
 		};
 
 		if (district) {
-      filters['location.district.id'] = district;
-    }
-		
+			filters['location.district.id'] = district;
+		}
+
 		if (minPrice || maxPrice) {
 			filters.price = {};
 
@@ -177,10 +177,7 @@ export const getRooms = async (req, res) => {
 		}
 
 		const rooms = await Room.find(filters)
-			.populate(
-				'ownerId',
-				'firstName lastName profileImage identityVerificationStatus'
-			)
+			.populate('ownerId', 'firstName lastName profileImage identityVerificationStatus')
 			.sort({ createdAt: -1 });
 
 		res.json({
@@ -219,6 +216,96 @@ export const getRoomById = async (req, res) => {
 	} catch (error) {
 		res.status(500).json({
 			message: 'Error al obtener habitación',
+			error: error.message,
+		});
+	}
+};
+
+export const updateRoom = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		const room = await Room.findById(id);
+
+		if (!room) {
+			return res.status(404).json({
+				message: 'Habitación no encontrada',
+			});
+		}
+
+		if (room.ownerId.toString() !== req.user._id.toString()) {
+			return res.status(403).json({
+				message: 'No tienes permiso para editar esta habitación',
+			});
+		}
+
+		const {
+			title,
+			description,
+			price,
+			location,
+			bedroomCount,
+			bathroomCount,
+			area,
+			services,
+			amenities,
+			houseRules,
+			livingPreferences,
+			isAvailable,
+		} = req.body;
+
+		if (title !== undefined) room.title = title;
+		if (description !== undefined) room.description = description;
+		if (price !== undefined) room.price = price;
+		if (bedroomCount !== undefined) room.bedroomCount = bedroomCount;
+		if (bathroomCount !== undefined) room.bathroomCount = bathroomCount;
+		if (area !== undefined) room.area = area;
+		if (services !== undefined) room.services = services;
+		if (amenities !== undefined) room.amenities = amenities;
+		if (houseRules !== undefined) room.houseRules = houseRules;
+		if (livingPreferences !== undefined) {
+			room.livingPreferences = livingPreferences;
+		}
+		if (isAvailable !== undefined) room.isAvailable = isAvailable;
+
+		if (location !== undefined) {
+			if (location.districtId !== undefined) {
+				const district = await District.findById(location.districtId);
+
+				if (!district || !district.isActive) {
+					return res.status(400).json({
+						message: 'El distrito seleccionado no es válido',
+					});
+				}
+
+				room.location.district = {
+					id: district._id,
+					name: district.name,
+				};
+			}
+
+			if (location.address !== undefined) {
+				room.location.address = location.address;
+			}
+
+			if (location.reference !== undefined) {
+				room.location.reference = location.reference;
+			}
+
+			if (location.coordinates !== undefined) {
+				room.location.coordinates = location.coordinates;
+			}
+		}
+
+		await room.save();
+
+		res.json({
+			message: 'Habitación actualizada correctamente',
+			room,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: 'Error al actualizar habitación',
 			error: error.message,
 		});
 	}
