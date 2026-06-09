@@ -80,10 +80,9 @@ const userSchema = new mongoose.Schema(
 		},
 		identityVerificationStatus: {
 			type: String,
-			enum: ['pending', 'verified', 'rejected'],
-			default: 'pending',
+			enum: ['not_submitted', 'pending', 'approved', 'rejected'],
+			default: 'not_submitted',
 		},
-
 		isActive: {
 			type: Boolean,
 			default: true,

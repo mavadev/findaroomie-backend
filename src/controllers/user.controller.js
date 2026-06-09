@@ -1,5 +1,6 @@
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 import { deleteFromCloudinary } from '../utils/deleteFromCloudinary.js';
+import { CLOUDINARY_FOLDERS } from '../constants/cloudinaryFolders.js';
 
 export const getMe = async(req, res) => {
   res.json({
@@ -107,7 +108,7 @@ export const updateProfileImage = async(req, res) => {
 
     const result = await uploadToCloudinary(
       req.file.buffer,
-      'findaroomie/users/profile-images'
+      CLOUDINARY_FOLDERS.PROFILE_IMAGES
     );
 
     const optimizedImageUrl = result.secure_url.replace(
