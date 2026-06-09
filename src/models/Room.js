@@ -36,9 +36,16 @@ const roomSchema = new mongoose.Schema({
 
   location: {
     district: {
-      type: String,
-      required: true,
-      trim: true,
+      id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'District',
+        required: true,
+      },
+      name: {
+        type: String,
+        required: true,
+        trim: true,
+      },
     },
     address: {
       type: String,

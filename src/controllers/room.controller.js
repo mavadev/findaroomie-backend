@@ -1,4 +1,5 @@
 import Room from '../models/Room.js';
+import District from '../models/District.js';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary.js';
 import { CLOUDINARY_FOLDERS } from '../constants/cloudinaryFolders.js';
 
@@ -22,7 +23,7 @@ export const createRoom = async (req, res) => {
 			!title ||
 			!description ||
 			price === undefined ||
-			!location?.district ||
+			!location?.districtId ||
 			!location?.address ||
 			!bedroomCount ||
 			!bathroomCount
@@ -32,12 +33,31 @@ export const createRoom = async (req, res) => {
 			});
 		}
 
+		const district = await District.findById(location.districtId);
+
+		if (!district || !district.isActive) {
+			return res.status(400).json({
+				message: 'El distrito seleccionado no es válido',
+			});
+		}
+
 		const room = await Room.create({
 			ownerId: req.user._id,
 			title,
 			description,
 			price,
-			location,
+			location: {
+				district: {
+					id: district._id,
+					name: district.name,
+				},
+				address: location.address,
+				reference: location.reference || '',
+				coordinates: location.coordinates || {
+					lat: null,
+					lng: null,
+				},
+			},
 			bedroomCount,
 			bathroomCount,
 			area,
@@ -46,7 +66,7 @@ export const createRoom = async (req, res) => {
 			houseRules,
 			livingPreferences,
 		});
-
+		
 		res.status(201).json({
 			message: 'Habitación publicada correctamente',
 			room,
@@ -114,13 +134,59 @@ export const uploadRoomImages = async (req, res) => {
 
 export const getRooms = async (req, res) => {
 	try {
-		const rooms = await Room.find({ isAvailable: true })
-			.populate('ownerId', 'firstName lastName profileImage identityVerificationStatus')
+		const { district, minPrice, maxPrice, internet, water, electricity, gas, parking } = req.query;
+
+		const filters = {
+			isAvailable: true,
+		};
+
+		if (district) {
+      filters['location.district.id'] = district;
+    }
+		
+		if (minPrice || maxPrice) {
+			filters.price = {};
+
+			if (minPrice) {
+				filters.price.$gte = Number(minPrice);
+			}
+
+			if (maxPrice) {
+				filters.price.$lte = Number(maxPrice);
+			}
+		}
+
+		if (internet !== undefined) {
+			filters['services.internet'] = internet === 'true';
+		}
+
+		if (water !== undefined) {
+			filters['services.water'] = water === 'true';
+		}
+
+		if (electricity !== undefined) {
+			filters['services.electricity'] = electricity === 'true';
+		}
+
+		if (gas !== undefined) {
+			filters['services.gas'] = gas === 'true';
+		}
+
+		if (parking !== undefined) {
+			filters['services.parking'] = parking === 'true';
+		}
+
+		const rooms = await Room.find(filters)
+			.populate(
+				'ownerId',
+				'firstName lastName profileImage identityVerificationStatus'
+			)
 			.sort({ createdAt: -1 });
 
 		res.json({
 			message: 'Habitaciones obtenidas correctamente',
 			total: rooms.length,
+			filters,
 			rooms,
 		});
 	} catch (error) {

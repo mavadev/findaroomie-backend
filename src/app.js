@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import identityVerificationRoutes from './routes/identityVerification.routes.js';
 import roomRoutes from './routes/room.routes.js';
+import districtRoutes from './routes/district.routes.js';
 
 const app = express();
 
@@ -16,5 +17,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/identity-verifications', identityVerificationRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/districts', districtRoutes);
 
 export default app;
