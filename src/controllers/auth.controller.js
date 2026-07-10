@@ -15,6 +15,7 @@ export const registerUser = async (req, res) => {
 				message: 'Todos los campos obligatorios deben completarse',
 			});
 		}
+
 		const passwordError = validatePassword(password);
 		if (passwordError) {
 			return res.status(400).json({
@@ -23,7 +24,6 @@ export const registerUser = async (req, res) => {
 		}
 
 		const userExists = await User.findOne({ email });
-
 		if (userExists) {
 			return res.status(409).json({
 				message: 'El correo ya está registrado',
@@ -31,9 +31,8 @@ export const registerUser = async (req, res) => {
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
-
 		const user = await User.create({
-			firstName,
+			// firstName,
 			lastName,
 			email,
 			password: hashedPassword,
@@ -41,7 +40,6 @@ export const registerUser = async (req, res) => {
 		});
 
 		const code = generateVerificationCode();
-
 		await VerificationCode.create({
 			userId: user._id,
 			code,

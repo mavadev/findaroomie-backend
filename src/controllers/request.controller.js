@@ -42,17 +42,33 @@ export const getSentRequests = async (req, res) => {
 		const requests = await Request.find({ senderId: req.user._id })
 			.populate('roomId', 'title location images price isDeleted')
 			.populate('receiverId', 'firstName lastName profileImage phone')
-			.sort({ createdAt: -1 });
+			.sort({ createdAt: -1 })
+			.lean();
 
-		requests.forEach(request => {
+		const safeRequests = requests.map(request => {
 			if (request.status !== 'accepted' && request.receiverId) {
-				request.receiverId.phone = '';
+				return {
+					...request,
+					receiverId: {
+						...request.receiverId,
+						phone: '',
+					},
+				};
 			}
+
+			return request;
 		});
 
-		res.json({ message: 'Solicitudes enviadas obtenidas', total: requests.length, requests });
+		res.json({
+			message: 'Solicitudes enviadas obtenidas',
+			total: safeRequests.length,
+			requests: safeRequests,
+		});
 	} catch (error) {
-		res.status(500).json({ message: 'Error al obtener solicitudes enviadas', error: error.message });
+		res.status(500).json({
+			message: 'Error al obtener solicitudes enviadas',
+			error: error.message,
+		});
 	}
 };
 
@@ -61,17 +77,33 @@ export const getReceivedRequests = async (req, res) => {
 		const requests = await Request.find({ receiverId: req.user._id })
 			.populate('roomId', 'title location images price isDeleted')
 			.populate('senderId', 'firstName lastName profileImage identityVerificationStatus phone')
-			.sort({ createdAt: -1 });
+			.sort({ createdAt: -1 })
+			.lean();
 
-		requests.forEach(request => {
+		const safeRequests = requests.map(request => {
 			if (request.status !== 'accepted' && request.senderId) {
-				request.senderId.phone = '';
+				return {
+					...request,
+					senderId: {
+						...request.senderId,
+						phone: '',
+					},
+				};
 			}
+
+			return request;
 		});
 
-		res.json({ message: 'Solicitudes recibidas obtenidas', total: requests.length, requests });
+		res.json({
+			message: 'Solicitudes recibidas obtenidas',
+			total: safeRequests.length,
+			requests: safeRequests,
+		});
 	} catch (error) {
-		res.status(500).json({ message: 'Error al obtener solicitudes recibidas', error: error.message });
+		res.status(500).json({
+			message: 'Error al obtener solicitudes recibidas',
+			error: error.message,
+		});
 	}
 };
 
